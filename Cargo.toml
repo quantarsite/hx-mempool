@@ -1,0 +1,56 @@
+[package]
+name = "hx-mempool"
+version = "0.1.0"
+edition = "2021"
+description = "HYDRA-X L1 blockchain mempool with post-quantum signature cache (ML-DSA-87 + SLH-DSA-256s)"
+license = "MIT OR Apache-2.0"
+rust-version = "1.75"
+
+[features]
+# Expose MockVerifier and test helper functions to downstream integration test crates.
+test-helpers = []
+
+[dependencies]
+# Concurrent data structures
+dashmap = "5.5"
+crossbeam-queue = "0.3"
+
+# Post-quantum cryptography
+pqcrypto-dilithium = "0.5"
+pqcrypto-sphincsplus = "0.7"
+pqcrypto-traits = "0.3"
+
+# Hashing
+blake3 = "1.5"
+
+# Parallelism
+rayon = "1.8"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] }
+
+# Cold tier persistent storage
+sled = "0.34"
+
+# Error handling
+thiserror = "1"
+
+# Byte buffers
+bytes = "1"
+
+# Logging / tracing
+tracing = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+
+[profile.bench]
+opt-level = 3
+debug = true
