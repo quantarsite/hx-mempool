@@ -46,9 +46,9 @@ pub fn now_ms() -> u64 {
 /// enforced in [`crate::ingestion::crypto::HydraXVerifier::verify_hydra_x`].
 #[derive(Debug, Clone)]
 pub struct HydraXSignature {
-    /// ML-DSA-87 (Dilithium5, round-3) detached signature — exactly 4 595 bytes.
+    /// ML-DSA-87 (FIPS 204) detached signature, exactly 4 627 bytes.
     pub ml_dsa87: Vec<u8>,
-    /// SLH-DSA-SHA2-256s (SPHINCS+-SHA2-256s-simple) detached signature — exactly 29 792 bytes.
+    /// SLH-DSA-SHA2-256s (FIPS 205) detached signature, exactly 29 792 bytes.
     pub slh_dsa: Vec<u8>,
 }
 
@@ -285,6 +285,27 @@ impl PooledTx {
     }
 }
 
+// ── Domain separation (HYDRA-X v2) ───────────────────────────────────────────
+
+/// Protocol tag prepended to every signed transaction payload.
+pub const SIGNING_DOMAIN: &[u8] = b"QTR-HYDRAX-V2";
+
+/// Network the signatures are bound to.
+pub const CHAIN_ID: &str = "quantar-testnet-2";
+
+/// `SIGNING_DOMAIN || len(CHAIN_ID) as u8 || CHAIN_ID`
+///
+/// The length byte keeps the encoding unambiguous if the chain id ever
+/// changes length. Must stay byte-identical to
+/// `qtrc_common::tx::signing_domain_prefix` in quantar-testnet.
+pub fn signing_domain_prefix() -> Vec<u8> {
+    let mut p = Vec::with_capacity(SIGNING_DOMAIN.len() + 1 + CHAIN_ID.len());
+    p.extend_from_slice(SIGNING_DOMAIN);
+    p.push(CHAIN_ID.len() as u8);
+    p.extend_from_slice(CHAIN_ID.as_bytes());
+    p
+}
+
 // ── RawTransaction ────────────────────────────────────────────────────────────
 
 /// An unverified transaction as received from the network layer.
@@ -297,9 +318,9 @@ pub struct RawTransaction {
     pub nonce: u64,
     /// Sender address.  Must equal BLAKE3(ml_pk || slh_pk)[0..32].
     pub sender: Address,
-    /// ML-DSA-87 (Dilithium5) public key of the sender — must be 2 592 bytes.
+    /// ML-DSA-87 (FIPS 204) public key of the sender — must be 2 592 bytes.
     pub sender_ml_dsa_pk: Vec<u8>,
-    /// SLH-DSA-SHA2-256s (SPHINCS+) public key of the sender — must be 64 bytes.
+    /// SLH-DSA-SHA2-256s (FIPS 205) public key of the sender — must be 64 bytes.
     pub sender_slh_dsa_pk: Vec<u8>,
     /// Recipient address.
     pub recipient: Address,
@@ -316,18 +337,24 @@ pub struct RawTransaction {
 impl RawTransaction {
     /// Produces the canonical signing bytes for this transaction.
     ///
-    /// Layout (fixed-width fields are little-endian):
+    /// Layout (fixed-width fields are little-endian), HYDRA-X v2:
     /// ```text
-    /// nonce(8) || sender(32) || recipient(32) || value(16) || fee_per_gas(8)
-    /// || gas_limit(8) || data_len(8) || data
+    /// domain_prefix || nonce(8) || sender(32) || recipient(32) || value(16)
+    /// || fee_per_gas(8) || gas_limit(8) || data_len(8) || data
     /// ```
+    ///
+    /// `domain_prefix` is [`signing_domain_prefix`]: it binds every signature
+    /// to the protocol version and to [`CHAIN_ID`], so a signature produced
+    /// for one network (or for v1) can never be replayed on another.
     ///
     /// Public keys are **not** included in the signing bytes — they are
     /// part of the verification context, not the signed payload.
     pub fn signing_bytes(&self) -> Vec<u8> {
+        let prefix = signing_domain_prefix();
         let mut buf = Vec::with_capacity(
-            8 + 32 + 32 + 16 + 8 + 8 + 8 + self.data.len(),
+            prefix.len() + 8 + 32 + 32 + 16 + 8 + 8 + 8 + self.data.len(),
         );
+        buf.extend_from_slice(&prefix);
         buf.extend_from_slice(&self.nonce.to_le_bytes());
         buf.extend_from_slice(&self.sender);
         buf.extend_from_slice(&self.recipient);

@@ -5,8 +5,8 @@
 //! ## Cryptographic scheme
 //!
 //! Every transaction must carry an AND-composition of two post-quantum signatures:
-//! * **ML-DSA-87** (FIPS 204 / Dilithium5) — lattice-based
-//! * **SLH-DSA-SHA2-256s** (FIPS 205 / SPHINCS+-SHA2-256s-simple) — hash-based
+//! * **ML-DSA-87** (FIPS 204) — lattice-based
+//! * **SLH-DSA-SHA2-256s** (FIPS 205) — hash-based
 //!
 //! Both signatures must verify independently; if either fails the transaction is
 //! rejected and no entry is made in the pool or cache.
@@ -59,10 +59,10 @@ pub const ML_DSA87_PK_LEN: usize = 2592;
 /// Byte length of an ML-DSA-87 (FIPS 204) detached signature.
 pub const ML_DSA87_SIG_LEN: usize = 4627;
 
-/// Byte length of an SLH-DSA-SHA2-256s (SPHINCS+-SHA2-256s-simple) public key.
+/// Byte length of an SLH-DSA-SHA2-256s (FIPS 205) public key.
 pub const SLH_DSA_256S_PK_LEN: usize = 64;
 
-/// Byte length of an SLH-DSA-SHA2-256s (SPHINCS+-SHA2-256s-simple) detached signature.
+/// Byte length of an SLH-DSA-SHA2-256s (FIPS 205) detached signature.
 pub const SLH_DSA_256S_SIG_LEN: usize = 29792;
 
 /// Size of a fully serialised `SigEntry` including both signatures and struct overhead.
