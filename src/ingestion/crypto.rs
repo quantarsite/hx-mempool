@@ -19,7 +19,7 @@ use crate::{ML_DSA87_PK_LEN, ML_DSA87_SIG_LEN, SLH_DSA_256S_PK_LEN, SLH_DSA_256S
 /// both legs in parallel with `rayon::join` and AND-gates the results.
 /// Implementations may override this for testing or specialised hardware.
 pub trait HydraXVerifier: Send + Sync {
-    /// Verifies an ML-DSA-87 (Dilithium5, round-3) detached signature.
+    /// Verifies an ML-DSA-87 (FIPS 204) detached signature.
     ///
     /// # Errors
     ///
@@ -80,7 +80,7 @@ pub trait HydraXVerifier: Send + Sync {
 
 // ── PqCryptoVerifier ──────────────────────────────────────────────────────────
 
-/// Production verifier using `pqcrypto-dilithium` and `pqcrypto-sphincsplus`.
+/// Production verifier using `pqcrypto-mldsa` and `pqcrypto-sphincsplus`.
 ///
 /// Stateless and cheap to clone (zero-size struct).
 #[derive(Debug, Default, Clone, Copy)]
@@ -93,7 +93,7 @@ impl HydraXVerifier for PqCryptoVerifier {
         sig: &[u8],
         pk: &[u8],
     ) -> Result<(), CryptoError> {
-        use pqcrypto_dilithium::dilithium5;
+        use pqcrypto_mldsa::mldsa87;
         use pqcrypto_traits::sign::{DetachedSignature, PublicKey};
 
         if pk.len() != ML_DSA87_PK_LEN {
@@ -109,16 +109,16 @@ impl HydraXVerifier for PqCryptoVerifier {
             });
         }
 
-        let public_key = dilithium5::PublicKey::from_bytes(pk)
+        let public_key = mldsa87::PublicKey::from_bytes(pk)
             .map_err(|e| CryptoError::PublicKeyDecodeError {
                 reason: e.to_string(),
             })?;
-        let detached_sig = dilithium5::DetachedSignature::from_bytes(sig)
+        let detached_sig = mldsa87::DetachedSignature::from_bytes(sig)
             .map_err(|e| CryptoError::SignatureDecodeError {
                 reason: e.to_string(),
             })?;
 
-        dilithium5::verify_detached_signature(&detached_sig, msg, &public_key)
+        mldsa87::verify_detached_signature(&detached_sig, msg, &public_key)
             .map_err(|_| CryptoError::MlDsa87VerificationFailed)
     }
 

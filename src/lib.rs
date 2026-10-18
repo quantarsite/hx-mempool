@@ -53,12 +53,11 @@ pub mod types;
 // These are embedded here so downstream crates never need to depend on
 // pqcrypto just to size buffers or write assertions.
 
-/// Byte length of an ML-DSA-87 (Dilithium5) public key.
+/// Byte length of an ML-DSA-87 (FIPS 204) public key.
 pub const ML_DSA87_PK_LEN: usize = 2592;
 
-/// Byte length of an ML-DSA-87 (Dilithium5) detached signature.
-/// Round-3 / pqcrypto value; FIPS 204 uses 4627.
-pub const ML_DSA87_SIG_LEN: usize = 4595;
+/// Byte length of an ML-DSA-87 (FIPS 204) detached signature.
+pub const ML_DSA87_SIG_LEN: usize = 4627;
 
 /// Byte length of an SLH-DSA-SHA2-256s (SPHINCS+-SHA2-256s-simple) public key.
 pub const SLH_DSA_256S_PK_LEN: usize = 64;
