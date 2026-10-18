@@ -1,6 +1,6 @@
 [package]
 name = "hx-mempool"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "HYDRA-X L1 blockchain mempool with post-quantum signature cache (ML-DSA-87 + SLH-DSA-256s)"
 license = "MIT OR Apache-2.0"
@@ -17,7 +17,7 @@ crossbeam-queue = "0.3"
 
 # Post-quantum cryptography
 pqcrypto-mldsa = "0.1"
-pqcrypto-sphincsplus = "0.7"
+fips205 = "0.4"         # SLH-DSA-SHA2-256s (FIPS 205)
 pqcrypto-traits = "0.3"
 
 # Hashing

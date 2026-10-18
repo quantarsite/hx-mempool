@@ -1,7 +1,7 @@
 //! Post-quantum cryptographic verifier for HYDRA-X transactions.
 //!
 //! Defines the [`HydraXVerifier`] trait, the production [`PqCryptoVerifier`]
-//! backed by `pqcrypto-dilithium` and `pqcrypto-sphincsplus`, and a
+//! backed by `pqcrypto-mldsa` (FIPS 204) and `fips205` (FIPS 205), and a
 //! `MockVerifier` for tests.
 
 use rayon::join;
@@ -9,6 +9,9 @@ use rayon::join;
 use crate::error::CryptoError;
 use crate::types::HydraXSignature;
 use crate::{ML_DSA87_PK_LEN, ML_DSA87_SIG_LEN, SLH_DSA_256S_PK_LEN, SLH_DSA_256S_SIG_LEN};
+
+/// FIPS 205 context string. Must match `SLH_CTX` in qtrc-crypto.
+const SLH_CTX: &[u8] = &[];
 
 // ── HydraXVerifier trait ──────────────────────────────────────────────────────
 
@@ -80,7 +83,7 @@ pub trait HydraXVerifier: Send + Sync {
 
 // ── PqCryptoVerifier ──────────────────────────────────────────────────────────
 
-/// Production verifier using `pqcrypto-mldsa` and `pqcrypto-sphincsplus`.
+/// Production verifier using `pqcrypto-mldsa` (FIPS 204) and `fips205` (FIPS 205).
 ///
 /// Stateless and cheap to clone (zero-size struct).
 #[derive(Debug, Default, Clone, Copy)]
@@ -128,8 +131,8 @@ impl HydraXVerifier for PqCryptoVerifier {
         sig: &[u8],
         pk: &[u8],
     ) -> Result<(), CryptoError> {
-        use pqcrypto_sphincsplus::sphincssha2256ssimple;
-        use pqcrypto_traits::sign::{DetachedSignature, PublicKey};
+        use fips205::slh_dsa_sha2_256s;
+        use fips205::traits::{SerDes, Verifier};
 
         if pk.len() != SLH_DSA_256S_PK_LEN {
             return Err(CryptoError::InvalidSlhDsaPkLen {
@@ -144,16 +147,26 @@ impl HydraXVerifier for PqCryptoVerifier {
             });
         }
 
-        let public_key = sphincssha2256ssimple::PublicKey::from_bytes(pk)
+        let pk_arr: [u8; slh_dsa_sha2_256s::PK_LEN] =
+            pk.try_into().map_err(|_| CryptoError::PublicKeyDecodeError {
+                reason: "SLH-DSA public key length".into(),
+            })?;
+        let public_key = slh_dsa_sha2_256s::PublicKey::try_from_bytes(&pk_arr)
             .map_err(|e| CryptoError::PublicKeyDecodeError {
                 reason: e.to_string(),
             })?;
-        let detached_sig = sphincssha2256ssimple::DetachedSignature::from_bytes(sig)
-            .map_err(|e| CryptoError::SignatureDecodeError {
-                reason: e.to_string(),
+        let sig_arr: [u8; slh_dsa_sha2_256s::SIG_LEN] =
+            sig.try_into().map_err(|_| CryptoError::SignatureDecodeError {
+                reason: "SLH-DSA signature length".into(),
             })?;
 
-        sphincssha2256ssimple::verify_detached_signature(&detached_sig, msg, &public_key)
+        // FIPS 205 pure mode with an empty context string, identical to the
+        // signer in quantar-testnet/qtrc-crypto (SLH_CTX = []).
+        if public_key.verify(msg, &sig_arr, SLH_CTX) {
+            Ok(())
+        } else {
+            Err(CryptoError::SlhDsa256sVerificationFailed)
+        }
             .map_err(|_| CryptoError::SlhDsa256sVerificationFailed)
     }
 }

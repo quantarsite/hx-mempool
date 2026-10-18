@@ -12,11 +12,11 @@ use thiserror::Error;
 /// key/signature length validation.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum CryptoError {
-    /// ML-DSA-87 (Dilithium5) signature verification failed.
+    /// ML-DSA-87 (FIPS 204) signature verification failed.
     #[error("ML-DSA-87 signature verification failed")]
     MlDsa87VerificationFailed,
 
-    /// SLH-DSA-SHA2-256s (SPHINCS+) signature verification failed.
+    /// SLH-DSA-SHA2-256s (FIPS 205) signature verification failed.
     #[error("SLH-DSA-SHA2-256s signature verification failed")]
     SlhDsa256sVerificationFailed,
 
